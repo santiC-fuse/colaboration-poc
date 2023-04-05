@@ -1,6 +1,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const { newInstance, removeAllOrigins } = require("./services");
+const { newInstance, forkInstance, getDiff } = require("./services");
 
 const app = express();
 app.use(bodyParser.json());
@@ -11,25 +11,50 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-//Create Repo
+//Create Instance
 app.post("/new", async (req, res) => {
   try {
     const { name } = req.body;
-    await newInstance(name);
-    res.send("ok");
+    const result = await newInstance(name);
+
+    if (result.error) {
+      res.status(400).send(result.error);
+    }
+
+    res.send(result.success);
   } catch (err) {
-    console.error(err);
     res.send(err);
   }
 });
 
-//Create Repo
-app.post("/clear/origins", async (req, res) => {
+//Fork Instance
+app.post("/fork", async (req, res) => {
   try {
-    await removeAllOrigins();
-    res.send("ok");
+    const { name, origin } = req.body;
+    const result = await forkInstance(name, origin);
+
+    if (result.error) {
+      res.status(400).send(result.error);
+    }
+
+    res.send(result.success);
   } catch (err) {
-    console.error(err);
+    res.send(err);
+  }
+});
+
+//diff
+app.post("/diff", async (req, res) => {
+  try {
+    const { name } = req.body;
+    const result = await getDiff(name);
+
+    if (result.error) {
+      res.status(400).send(result.error);
+    }
+
+    res.send(result.success);
+  } catch (err) {
     res.send(err);
   }
 });

@@ -11,46 +11,76 @@ const defaultOptions = {
 
 const git = simpleGit(defaultOptions);
 
+const newBranch = async (name, origin = "origin/master") => {
+  const branches = await git.branch();
+  const branch = branches.all.find((b) => b === name);
+
+  if (!branch) {
+    return await git.checkoutBranch(name, origin);
+  }
+
+  return;
+};
+
 const newInstance = async (name) => {
   const folderName = `test/${name}`;
 
-  if (!fs.existsSync(folderName)) {
-    try {
-      const branch = await git.checkoutBranch(name, "origin/master");
-      console.log("branch", branch);
+  const branch = await newBranch(name);
 
-      fs.writeFileSync(`${folderName}/instance.json`, newInstanceContent);
-
-      const diff = await git.diff(["--name-only", "--staged"]);
-      console.log("DIF: ", diff);
-
-      const add = await git.add(".");
-      console.log("add", add);
-
-      const commit = await git.commit("test");
-      console.log("commit", commit);
-
-      const push = await git.push(name);
-      console.log("push", push);
-    } catch (error) {
-      console.log("ERRRR", error);
-    }
+  if (!branch) {
+    return {
+      error: "Instance already exists",
+    };
   }
+
+  fs.mkdirSync(folderName);
+  fs.writeFileSync(`${folderName}/instance.json`, newInstanceContent);
+
+  await git.add(".");
+  await git.commit("First Commit");
+  await git.push();
+
+  return {
+    success: `Instance ${name} created`,
+  };
 };
 
-const removeAllOrigins = async () => {
-  const remotes = await git.listRemote();
-  console.log(remotes);
-  remotes.forEach((remote) => {
-    git.removeRemote(remote);
-  });
+const forkInstance = async (name, origin) => {
+  console.log(name, origin);
+  const folderName = `test/${origin}`;
+
+  const branch = await newBranch(name, origin);
+
+  if (!branch) {
+    return {
+      error: "Instance already exists",
+    };
+  }
+
+  fs.writeFileSync(`${folderName}/instance2.json`, newInstanceContent);
+
+  await git.add(".");
+  await git.commit("First Commit");
+  await git.push();
+
+  return {
+    success: `Instance ${name} forked from ${origin}`,
+  };
 };
 
-//git.diff(["--name-only", "--staged"]);
+const getDiff = async (branch) => {
+  await git.checkout(branch);
+  const diff = await git.diff();
 
-function callHandler(err, result) {
-  console.log("callHandler err: ", err);
-  console.log("callHandler: ", result);
-}
+  if (!diff) {
+    return {
+      error: "There is no diff",
+    };
+  }
 
-module.exports = { newInstance, removeAllOrigins };
+  return {
+    success: diff,
+  };
+};
+
+module.exports = { newInstance, forkInstance, getDiff };
